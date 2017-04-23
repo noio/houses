@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 using DG.Tweening;
 
@@ -19,6 +20,10 @@ public class Cursor : MonoBehaviour
 
     public void Update()
     {
+        if (EventSystem.current.IsPointerOverGameObject())
+        {
+            return;
+        }
         var screenPos = Input.mousePosition;
         var camera = Camera.main;
         // Get the mouse position from Event.

@@ -118,27 +118,31 @@ public class Game : MonoBehaviour
     Dictionary<Coords, Tile> _tiles = new Dictionary<Coords, Tile>();
 
     Queue<RuleAction> _actionQueue = new Queue<RuleAction>();
-    List<TileType> _types = new List<TileType>();
     HashSet<Coords> _playingField = new HashSet<Coords>();
 
     PopulationStack _stack;
     Cursor _cursor;
     List<Rule2> _rules = new List<Rule2>();
     string _rulesPath;
+    string _levelsPath;
     Transform _field;
     List<TileType> _tileMixture = new List<TileType>();
     List<TileType> _tileBuffer = new List<TileType>();
     Level _currentLevel;
+    int _currentLevelNum;
 
     public Text scoreText;
     public InputField rulesText;
     public Levels levels;
+    public Image wonOverlay;
+    public Image lostOverlay;
 
 
     // Use this for initialization
     void Awake()
     {
         _rulesPath = Path.Combine(Application.persistentDataPath, "rules.txt");
+        _levelsPath = Path.Combine(Application.persistentDataPath, "levels.txt");
 
         if (File.Exists(_rulesPath))
         {
@@ -152,37 +156,28 @@ public class Game : MonoBehaviour
 
         JsonUtility.FromJsonOverwrite(defaultLevels.text, levels);
 
-
-
-        // offsets[Direction.Top] = new Coords(0,1);
-        // offsets[Direction.TopRight] = new Coords(1,1);
-        // offsets[Direction.Right] = new Coords(1,0);
-        // offsets[Direction.BottomRight] = new Coords(1,-1);
-        // offsets[Direction.Bottom] = new Coords(0,-1);
-        // offsets[Direction.BottomLeft] = new Coords(-1,-1);
-        // offsets[Direction.Left] = new Coords(-1,0);
-        // offsets[Direction.TopLeft] = new Coords(-1,1);
-        // offsets[Direction.Self] = new Coords(0,0);
-
-
-        foreach( var field in FindObjectsOfType<PlayingField>())
+        if (File.Exists(_levelsPath))
         {
-            _playingField.Add(new Coords(Mathf.RoundToInt(field.transform.position.x), Mathf.RoundToInt(field.transform.position.y)));
+            try
+            {
+                JsonUtility.FromJsonOverwrite(File.ReadAllText(_levelsPath), levels);
+            }
+            catch (System.Exception e)
+            {
+                Debug.LogFormat("Failed to parse levels: {0}", e);
+            }
         }
-
-        var firstTile = MakeTile(TileType.Forest, new Coords(0,0));
-        AddTile(firstTile);
-
-        foreach (TileType type in System.Enum.GetValues(typeof(TileType)))
+        else
         {
-            _types.Add(type);
+            File.WriteAllText(_levelsPath, defaultLevels.text);
         }
 
         _stack = FindObjectOfType<PopulationStack>();
 
         _cursor = FindObjectOfType<Cursor>();
 
-        SetupLevel(levels.levels[1]);
+        _currentLevelNum = 0;
+        SetupLevel(levels.levels[_currentLevelNum]);
 
         FillCursor();
         UpdateScore();
@@ -307,6 +302,15 @@ public class Game : MonoBehaviour
         CheckRules();
         ProcessActions();
 
+        if (_stack.size > _currentLevel.maxStackSize)
+        {
+            lostOverlay.gameObject.SetActive(true);
+        }
+        else if (score >= _currentLevel.scoreToWin)
+        {
+            wonOverlay.gameObject.SetActive(true);
+        }
+
         FillCursor();
         UpdateScore();
 
@@ -317,7 +321,7 @@ public class Game : MonoBehaviour
         score = 0;
         foreach (var pair in _tiles)
         {
-            if ((pair.Value.type & (TileType.Mansion | TileType.Apartment | TileType.Slum)) != 0)
+            if ((pair.Value.type & (TileType.Mansion | TileType.Apartment | TileType.Slum | TileType.Forest)) != 0)
             {
                 score ++;
             }
@@ -610,6 +614,22 @@ public class Game : MonoBehaviour
             type |= (TileType)System.Enum.Parse(typeof(TileType), typeString.TrimEnd(new char[]{'s'}), true);
         }
         return type;
+    }
+
+    public void ToggleRules()
+    {
+        rulesText.gameObject.SetActive(!rulesText.gameObject.activeSelf);
+    }
+
+    public void OnClickLostOverlay()
+    {
+        SetupLevel(levels.levels[_currentLevelNum]);
+    }
+
+    public void OnClickWonOverlay()
+    {
+        _currentLevelNum ++;
+        SetupLevel(levels.levels[_currentLevelNum]);
     }
 
 
