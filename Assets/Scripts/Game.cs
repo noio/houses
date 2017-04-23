@@ -149,7 +149,7 @@ public class Game : MonoBehaviour
     {
         _rulesPath = Path.Combine(Application.persistentDataPath, "rules.txt");
         _levelsPath = Path.Combine(Application.persistentDataPath, "levels.txt");
-        levelPathText.text = "levels stored in " + _levelsPath;
+        levelPathText.text = "levels stored in \n" + _levelsPath;
 
         if (forceDefaultLevelsAndRules == false && File.Exists(_rulesPath))
         {
