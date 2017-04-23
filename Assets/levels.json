@@ -33,6 +33,18 @@
         "maxStackSize": 2
     }, {
         "layout": [
+            " --- ",
+            "-----",
+            "--F--",
+            "-----",
+            " --- "
+        ],
+        "tiles": "FE",
+        "shuffleTiles": true,
+        "scoreToWin": 20,
+        "maxStackSize": 0
+    }, {
+        "layout": [
             "    -----    ",
             "  ---------  ",
             " ----------- ",

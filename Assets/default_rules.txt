@@ -4,7 +4,7 @@ Apartments between 4 Mansions becomes Empty and goes on stack
 Apartments between 4 Slums becomes Slums
 Slums between 3 Mansions becomes Empty and goes on stack
 Mansion between 3 Slums becomes Empty and goes on stack
-
+Empty between 4 Forest becomes Forest
 
 
 

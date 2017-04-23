@@ -114,6 +114,16 @@ public class Game : MonoBehaviour
     public Sprite mansionSprite;
     public TextAsset defaultRules;
     public TextAsset defaultLevels;
+    public Text scoreText;
+    public InputField rulesText;
+    public Text levelPathText;
+    public Levels levels;
+    public Image wonOverlay;
+    public Image lostOverlay;
+    public Image quitOverlay;
+    public AudioSource wonSound;
+    public AudioSource demolishSound;
+    public AudioSource placeSound;
 
     Dictionary<Coords, Tile> _tiles = new Dictionary<Coords, Tile>();
 
@@ -131,11 +141,7 @@ public class Game : MonoBehaviour
     Level _currentLevel;
     int _currentLevelNum;
 
-    public Text scoreText;
-    public InputField rulesText;
-    public Levels levels;
-    public Image wonOverlay;
-    public Image lostOverlay;
+
 
 
     // Use this for initialization
@@ -143,6 +149,7 @@ public class Game : MonoBehaviour
     {
         _rulesPath = Path.Combine(Application.persistentDataPath, "rules.txt");
         _levelsPath = Path.Combine(Application.persistentDataPath, "levels.txt");
+        levelPathText.text = "levels stored in " + _levelsPath;
 
         if (forceDefaultLevelsAndRules == false && File.Exists(_rulesPath))
         {
@@ -184,7 +191,8 @@ public class Game : MonoBehaviour
     {
         if (Input.GetKeyDown("n"))
         {
-            SetupLevel(levels.levels[++_currentLevelNum]);
+            _currentLevelNum = (_currentLevelNum + 1) % levels.levels.Count;
+            SetupLevel(levels.levels[_currentLevelNum]);
         }
     }
 
@@ -300,6 +308,7 @@ public class Game : MonoBehaviour
 
     public void PlaceTiles(List<Tile> tiles, Coords startingPoint)
     {
+        placeSound.Play();
         foreach (var tile in tiles)
         {
             tile.coords += startingPoint;
@@ -314,19 +323,32 @@ public class Game : MonoBehaviour
 
         if (_stack.size > _currentLevel.maxStackSize)
         {
-            lostOverlay.gameObject.SetActive(true);
+            EndGame(false);
         }
         else if (score >= _currentLevel.scoreToWin)
         {
-            wonOverlay.gameObject.SetActive(true);
+            EndGame(true);
         }
         else if (_tiles.Count >= _playingField.Count)
         {
-            lostOverlay.gameObject.SetActive(true);
+            EndGame(false);
         }
         else
         {
             FillCursor();
+        }
+    }
+
+    void EndGame(bool won)
+    {
+        if (won)
+        {
+            wonSound.Play();
+            wonOverlay.gameObject.SetActive(true);
+        }
+        else
+        {
+            lostOverlay.gameObject.SetActive(true);
         }
     }
 
@@ -484,6 +506,10 @@ public class Game : MonoBehaviour
 
     void ProcessActions()
     {
+        if (_actionQueue.Count > 0)
+        {
+            demolishSound.Play();
+        }
         while (_actionQueue.Count > 0)
         {
             var action = _actionQueue.Dequeue();
@@ -643,9 +669,24 @@ public class Game : MonoBehaviour
 
     public void OnClickWonOverlay()
     {
-        _currentLevelNum ++;
+        _currentLevelNum = (_currentLevelNum + 1) % levels.levels.Count;
         SetupLevel(levels.levels[_currentLevelNum]);
         wonOverlay.gameObject.SetActive(false);
+    }
+
+    public void OnButtonExit()
+    {
+        quitOverlay.gameObject.SetActive(true);
+    }
+
+    public void OnButtonQuitYes()
+    {
+        Application.Quit();
+    }
+
+    public void OnButtonQuitNo()
+    {
+        quitOverlay.gameObject.SetActive(false);
     }
 
 
