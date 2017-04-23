@@ -1,0 +1,6 @@
+Slums between 5 Slums becomes Empty and goes on stack
+Forest between 4 Slums becomes Empty
+Apartments between 4 Mansions becomes Empty and goes on stack
+Apartments between 4 Slums becomes Empty and goes on stack
+Slums between 3 Mansions becomes Empty and goes on stack
+Mansion between 3 Slums becomes Empty and goes on stack
