@@ -24,13 +24,14 @@ public class Tile : MonoBehaviour {
     public Coords coords;
 
     SpriteRenderer _renderer;
-    public Sprite sprite
+    public SpriteRenderer sprite
     {
         get
         {
-            return renderer;
+            return _renderer;
         }
     }
+
 
     void Awake()
     {
@@ -38,6 +39,17 @@ public class Tile : MonoBehaviour {
     }
 	// Update is called once per frame
 	void Update () {
-        _renderer.transform.position = new Vector3(0, 0.01f * Mathf.PerlinNoise(transform.position.x + Time.time, transform.position.y));
+        _renderer.transform.localPosition = new Vector3(0, 0.1f * Mathf.PerlinNoise((transform.position.x + Time.time) / 3, transform.position.y));
 	}
+    void SetOnField (bool onField)
+    {
+
+    }
+
+
+    public void Bump(Vector2 force)
+    {
+        GetComponent<Rigidbody2D>().AddForce(force, ForceMode2D.Impulse);
+    }
+
 }

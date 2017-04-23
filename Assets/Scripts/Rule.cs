@@ -10,7 +10,7 @@ public enum Direction
     Top = 1 << 1,
     TopRight = 1 << 2,
     Left = 1 << 3,
-    Self = 1 << 4,
+    // Self = 1 << 4,
     Right = 1 << 5,
     BottomLeft = 1 << 6,
     Bottom = 1 << 7,

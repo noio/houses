@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.UI;
+using UnityEngine.Serialization;
 
 using DG.Tweening;
 
@@ -50,6 +51,10 @@ public struct Coords
     public static Coords operator +(Coords a, Coords b)
     {
         return new Coords(a.x + b.x, a.y + b.y);
+    }
+    public static Coords operator -(Coords a, Coords b)
+    {
+        return new Coords(a.x - b.x, a.y - b.y);
     }
 
     public static Coords operator *(Coords a, Coords b)
@@ -99,12 +104,15 @@ public class Game : MonoBehaviour
 
     public Vector2 tileCenter = new Vector2(4/8f, 7/16f);
     public Tile tilePrefab;
+    public PlayingField fieldPrefab;
+    public ParticleSystem demolishedEffect;
     public Sprite forestSprite;
     public Sprite emptySprite;
     public Sprite slumSprite;
     public Sprite midSprite;
     public Sprite mansionSprite;
     public TextAsset defaultRules;
+    public TextAsset defaultLevels;
 
     Dictionary<Direction, Coords> offsets = new Dictionary<Direction, Coords>();
     Dictionary<Coords, Tile> _tiles = new Dictionary<Coords, Tile>();
@@ -117,25 +125,17 @@ public class Game : MonoBehaviour
     Cursor _cursor;
     List<Rule2> _rules = new List<Rule2>();
     string _rulesPath;
+    Transform _field;
 
     public Text scoreText;
     public InputField rulesText;
+    public Levels levels;
 
 
     // Use this for initialization
     void Awake()
     {
         _rulesPath = Path.Combine(Application.persistentDataPath, "rules.txt");
-
-        offsets[Direction.Top] = new Coords(0,1);
-        offsets[Direction.TopRight] = new Coords(1,1);
-        offsets[Direction.Right] = new Coords(1,0);
-        offsets[Direction.BottomRight] = new Coords(1,-1);
-        offsets[Direction.Bottom] = new Coords(0,-1);
-        offsets[Direction.BottomLeft] = new Coords(-1,-1);
-        offsets[Direction.Left] = new Coords(-1,0);
-        offsets[Direction.TopLeft] = new Coords(-1,1);
-        offsets[Direction.Self] = new Coords(0,0);
 
         if (File.Exists(_rulesPath))
         {
@@ -146,6 +146,19 @@ public class Game : MonoBehaviour
             rulesText.text = defaultRules.text;
         }
         ParseRules(rulesText.text);
+
+        JsonUtility.FromJsonOverwrite(defaultLevels.text, levels);
+
+        // offsets[Direction.Top] = new Coords(0,1);
+        // offsets[Direction.TopRight] = new Coords(1,1);
+        // offsets[Direction.Right] = new Coords(1,0);
+        // offsets[Direction.BottomRight] = new Coords(1,-1);
+        // offsets[Direction.Bottom] = new Coords(0,-1);
+        // offsets[Direction.BottomLeft] = new Coords(-1,-1);
+        // offsets[Direction.Left] = new Coords(-1,0);
+        // offsets[Direction.TopLeft] = new Coords(-1,1);
+        // offsets[Direction.Self] = new Coords(0,0);
+
 
         foreach( var field in FindObjectsOfType<PlayingField>())
         {
@@ -194,13 +207,42 @@ public class Game : MonoBehaviour
         var renderer = tile.GetComponent<SpriteRenderer>();
         switch (type)
         {
-            case TileType.Empty: tile.sprite = emptySprite; break;
-            case TileType.Forest: tile.sprite = forestSprite; break;
-            case TileType.Slum: tile.sprite = slumSprite; break;
-            case TileType.Apartment: tile.sprite = midSprite; break;
-            case TileType.Mansion: tile.sprite = mansionSprite; break;
+            case TileType.Empty: tile.sprite.sprite = emptySprite; break;
+            case TileType.Forest: tile.sprite.sprite = forestSprite; break;
+            case TileType.Slum: tile.sprite.sprite = slumSprite; break;
+            case TileType.Apartment: tile.sprite.sprite = midSprite; break;
+            case TileType.Mansion: tile.sprite.sprite = mansionSprite; break;
         }
         return tile;
+    }
+
+    void SetupLevel(Level level)
+    {
+        if (_field != null)
+        {
+            Destroy(_field);
+        }
+        _field = new GameObject("Field").transform;
+        _field.localPosition = new Vector3(0,0,1);
+
+        _playingField.Clear();
+        int height = level.layout.Count;
+        int width = level.layout[0].Length;
+        Coords mid = new Coords(width / 2, height / 2);
+        for (int i = 0; i < width; i ++)
+        {
+            for (int j = 0; j < height; j ++)
+            {
+                if (level.layout[j][i] == '-')
+                {
+                    var coord = new Coords(i, j) - mid;
+                    _playingField.Add(coord);
+                    var fieldTile = Instantiate(fieldPrefab).transform;
+                    fieldTile.SetParent(_field);
+                    fieldTile.localPosition = coord;
+                }
+            }
+        }
     }
 
     public bool CanPlace(List<Tile> tiles, Coords atPoint)
@@ -256,8 +298,10 @@ public class Game : MonoBehaviour
         newTile.transform.SetParent(null);
         newTile.transform.DOLocalMove(pos, 0.3f);
 
+        newTile.sprite.color = Color.white;
         // newTile.GetComponent<SpriteRenderer>().sortingOrder = -newTile.coords.y;
-        // newTile.GetComponent<TargetJoint2D>().target = pos;
+        newTile.GetComponent<TargetJoint2D>().target = pos;
+        newTile.GetComponent<Collider2D>().enabled = true;
     }
 
     void DequeuePopulation()
@@ -336,28 +380,34 @@ public class Game : MonoBehaviour
 
     void CheckRules()
     {
+        var involvedNeighbors = new List<Tile>();
         foreach (var pair in _tiles)
         {
             var tile = pair.Value;
 
+            involvedNeighbors.Clear();
+
             foreach (var rule in _rules)
             {
-                if (RuleApplies(rule, tile.coords, tile.type))
+                if (RuleApplies(rule, tile.coords, tile.type, involvedNeighbors))
                 {
                     _actionQueue.Enqueue(new RuleAction(tile.coords, rule));
+                    ShowRule(tile.coords, involvedNeighbors);
+                    BumpNeighbors(tile.coords);
+                    break;
                 }
             }
         }
     }
 
-    bool RuleApplies(Rule2 rule, Coords coords, TileType currentType)
+    bool RuleApplies(Rule2 rule, Coords coords, TileType currentType, List<Tile> involved = null)
     {
         if (rule == null)
         {
             return false;
         }
 
-        if (currentType == rule.thisType && CountNeighbors(coords, rule.neighborType) >= rule.neighborCount)
+        if (currentType == rule.thisType && CountNeighbors(coords, rule.neighborType, involved) >= rule.neighborCount)
         {
             // var newTile = MakeTile(rule.effect, tile.coords);
             return true;
@@ -387,16 +437,29 @@ public class Game : MonoBehaviour
         }
     }
 
-    void ShockNeighbors(Coords coords)
+    void BumpNeighbors(Coords coords)
     {
-        foreach (Direction dir in System.Enum.GetValues(typeof(Direction)))
+        foreach (Coords offset in Neighbors)
         {
-            var offset = offsets[dir];
+            // var offset = offsets[dir];
             var tile = GetTile(coords + offset);
             if (tile != null)
             {
-                // tile.GetComponent<Rigidbody2D>().AddForce((Vector2)offset * 2, ForceMode2D.Impulse);
+                tile.Bump((Vector2)offset * 6);
             }
+        }
+    }
+
+    void ShowRule(Coords coords, List<Tile> involvedTiles)
+    {
+        var demolished = Instantiate(demolishedEffect);
+        demolished.transform.position = coords;
+        Debug.DrawLine(coords, coords + new Vector3(0,1,0), Color.red, 1.0f);
+        Debug.LogFormat("effect at{0}", coords);
+        foreach (var tile in involvedTiles)
+        {
+            tile.sprite.color = Color.red;
+            tile.sprite.DOColor(Color.white, 1.0f).SetEase(Ease.InOutFlash, 5, 1);
         }
     }
 
@@ -463,7 +526,7 @@ public class Game : MonoBehaviour
         return result;
     }
 
-    int CountNeighbors(Coords coord, TileType type)
+    int CountNeighbors(Coords coord, TileType type, List<Tile> involved = null)
     {
         int count = 0;
         foreach (var neighbor in GetNeighbors(coord))
@@ -471,6 +534,10 @@ public class Game : MonoBehaviour
             if ((neighbor.type & type) == neighbor.type)
             {
                 count ++;
+                if (involved != null)
+                {
+                    involved.Add(neighbor);
+                }
             }
         }
         return count;

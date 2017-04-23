@@ -9,11 +9,13 @@ public class Cursor : MonoBehaviour
     Game _game;
     public Coords coords;
     List<Tile> _tiles = new List<Tile>();
+    bool _justAdded;
 
     public void Awake()
     {
         _game = FindObjectOfType<Game>();
     }
+
 
     public void Update()
     {
@@ -31,6 +33,8 @@ public class Cursor : MonoBehaviour
 
         if (_game.CanPlace(_tiles, coords))
         {
+            _justAdded = false;
+            // SetTileColors(new Color(0.8f, 1.0f, 0.8f));
             SetTileColors(Color.white);
             if (Input.GetMouseButtonDown(0))
             {
@@ -41,7 +45,11 @@ public class Cursor : MonoBehaviour
         }
         else
         {
-            SetTileColors(Color.red);
+            if (_justAdded == false)
+            {
+                SetTileColors(Color.red);
+            }
+            // SetTileColors(new Color(1,1,1,0.3f));
         }
     }
 
@@ -55,11 +63,15 @@ public class Cursor : MonoBehaviour
 
     public void AddTile(Tile tile)
     {
+        _justAdded = true;
         tile.transform.SetParent(transform);
         tile.transform.localPosition = (Vector3)tile.coords;// + (Vector3)_game.tileCenter;
         tile.GetComponent<SpriteRenderer>().DOFade(0, 0);
         tile.GetComponent<SpriteRenderer>().DOFade(1, 0.4f);
+        tile.GetComponent<Collider2D>().enabled = false;
         _tiles.Add(tile);
+
+        SetTileColors(new Color(1,1,1,0.4f));
     }
 
 }
