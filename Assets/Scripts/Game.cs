@@ -121,11 +121,14 @@ public class Game : MonoBehaviour
     List<TileType> _types = new List<TileType>();
     HashSet<Coords> _playingField = new HashSet<Coords>();
 
-    PopQueue _popQueue;
+    PopulationStack _stack;
     Cursor _cursor;
     List<Rule2> _rules = new List<Rule2>();
     string _rulesPath;
     Transform _field;
+    List<TileType> _tileMixture = new List<TileType>();
+    List<TileType> _tileBuffer = new List<TileType>();
+    Level _currentLevel;
 
     public Text scoreText;
     public InputField rulesText;
@@ -148,6 +151,8 @@ public class Game : MonoBehaviour
         ParseRules(rulesText.text);
 
         JsonUtility.FromJsonOverwrite(defaultLevels.text, levels);
+
+
 
         // offsets[Direction.Top] = new Coords(0,1);
         // offsets[Direction.TopRight] = new Coords(1,1);
@@ -173,14 +178,24 @@ public class Game : MonoBehaviour
             _types.Add(type);
         }
 
-        _popQueue = FindObjectOfType<PopQueue>();
+        _stack = FindObjectOfType<PopulationStack>();
 
         _cursor = FindObjectOfType<Cursor>();
 
-
+        SetupLevel(levels.levels[1]);
 
         FillCursor();
         UpdateScore();
+    }
+
+    void ClearGame()
+    {
+        score = 0;
+        foreach (var pair in _tiles)
+        {
+            Destroy(pair.Value.gameObject);
+        }
+        _tiles.Clear();
     }
 
     public void ParseRules(string newRules)
@@ -218,6 +233,8 @@ public class Game : MonoBehaviour
 
     void SetupLevel(Level level)
     {
+        _currentLevel = level;
+        ClearGame();
         if (_field != null)
         {
             Destroy(_field);
@@ -226,6 +243,8 @@ public class Game : MonoBehaviour
         _field.localPosition = new Vector3(0,0,1);
 
         _playingField.Clear();
+
+
         int height = level.layout.Count;
         int width = level.layout[0].Length;
         Coords mid = new Coords(width / 2, height / 2);
@@ -233,16 +252,33 @@ public class Game : MonoBehaviour
         {
             for (int j = 0; j < height; j ++)
             {
-                if (level.layout[j][i] == '-')
+                var token = level.layout[j][i];
+                if (token != ' ')
                 {
                     var coord = new Coords(i, j) - mid;
                     _playingField.Add(coord);
                     var fieldTile = Instantiate(fieldPrefab).transform;
                     fieldTile.SetParent(_field);
                     fieldTile.localPosition = coord;
+
+                    if (token != '-')
+                    {
+                        var tileType = ParseTileType(token.ToString());
+                        var tile = MakeTile(tileType, coord);
+                        AddTile(tile);
+                    }
                 }
             }
         }
+
+        _tileBuffer.Clear();
+        _tileMixture.Clear();
+        foreach (char s in level.tiles)
+        {
+            _tileMixture.Add(ParseTileType(s.ToString()));
+        }
+
+        _stack.maxSize = _currentLevel.maxStackSize;
     }
 
     public bool CanPlace(List<Tile> tiles, Coords atPoint)
@@ -286,7 +322,7 @@ public class Game : MonoBehaviour
                 score ++;
             }
         }
-        scoreText.text = score.ToString();
+        scoreText.text = string.Format("{0}/{1}", score.ToString(), _currentLevel.scoreToWin);
 
     }
 
@@ -298,15 +334,15 @@ public class Game : MonoBehaviour
         newTile.transform.SetParent(null);
         newTile.transform.DOLocalMove(pos, 0.3f);
 
-        newTile.sprite.color = Color.white;
+
+        newTile.mode = TileMode.OnField;
         // newTile.GetComponent<SpriteRenderer>().sortingOrder = -newTile.coords.y;
         newTile.GetComponent<TargetJoint2D>().target = pos;
-        newTile.GetComponent<Collider2D>().enabled = true;
     }
 
     void DequeuePopulation()
     {
-        var firstInQueue = _popQueue.Pop();
+        var firstInQueue = _stack.Pop();
         if (firstInQueue != null)
         {
             var empties = new List<Tile>();
@@ -342,7 +378,7 @@ public class Game : MonoBehaviour
             }
             if (foundAPlace == false)
             {
-                _popQueue.AddTile(firstInQueue);
+                _stack.AddTile(firstInQueue);
             }
         }
 
@@ -352,30 +388,43 @@ public class Game : MonoBehaviour
 
     void FillCursor()
     {
-        for (int i = 0; i < 1; i ++){
-            for (int j = 0; j < 1; j ++){
-                TileType type;
-                float v = Random.value;
-                if (v <= 0.3)
-                {
-                    type = TileType.Mansion;
-                }
-                else if (v <= 0.6)
-                {
-                    type = TileType.Apartment;
-                }
-                else if (v <= 0.9)
-                {
-                    type = TileType.Slum;
-                }
-                else
-                {
-                    type = TileType.Forest;
-                }
-                var newTile = MakeTile(type, new Coords(i,j));
-                _cursor.AddTile(newTile);
+        if (_tileBuffer.Count == 0)
+        {
+            _tileBuffer.AddRange(_tileMixture);
+            if (_currentLevel.shuffleTiles)
+            {
+                _tileBuffer.Shuffle();
             }
         }
+
+        var newTile = MakeTile(_tileBuffer[0], new Coords(0,0));
+        _tileBuffer.RemoveAt(0);
+        _cursor.AddTile(newTile);
+
+        // for (int i = 0; i < 1; i ++){
+        //     for (int j = 0; j < 1; j ++){
+        //         TileType type;
+        //         float v = Random.value;
+        //         if (v <= 0.3)
+        //         {
+        //             type = TileType.Mansion;
+        //         }
+        //         else if (v <= 0.6)
+        //         {
+        //             type = TileType.Apartment;
+        //         }
+        //         else if (v <= 0.9)
+        //         {
+        //             type = TileType.Slum;
+        //         }
+        //         else
+        //         {
+        //             type = TileType.Forest;
+        //         }
+        //         var newTile = MakeTile(type, new Coords(i,j));
+        //         _cursor.AddTile(newTile);
+        //     }
+        // }
     }
 
     void CheckRules()
@@ -426,7 +475,7 @@ public class Game : MonoBehaviour
                 _tiles.Remove(existing.coords);
                 if (action.rule.onStack)
                 {
-                    _popQueue.AddTile(existing);
+                    _stack.AddTile(existing);
                 }
                 else
                 {
@@ -455,11 +504,10 @@ public class Game : MonoBehaviour
         var demolished = Instantiate(demolishedEffect);
         demolished.transform.position = coords;
         Debug.DrawLine(coords, coords + new Vector3(0,1,0), Color.red, 1.0f);
-        Debug.LogFormat("effect at{0}", coords);
         foreach (var tile in involvedTiles)
         {
             tile.sprite.color = Color.red;
-            tile.sprite.DOColor(Color.white, 1.0f).SetEase(Ease.InOutFlash, 5, 1);
+            tile.sprite.DOColor(Color.white, 3.0f).SetEase(Ease.InOutFlash, 9, 0);
         }
     }
 
@@ -543,6 +591,26 @@ public class Game : MonoBehaviour
         return count;
     }
 
+    public static TileType ParseTileType(string input)
+    {
+        TileType type = (TileType) 0;
+        foreach (var typeString in input.Split(new char[]{'/'}))
+        {
+            if (typeString.Length == 1)
+            {
+                switch (input)
+                {
+                    case "E": return TileType.Empty;
+                    case "F": return TileType.Forest;
+                    case "M": return TileType.Mansion;
+                    case "A": return TileType.Apartment;
+                    case "S": return TileType.Slum;
+                }
+            }
+            type |= (TileType)System.Enum.Parse(typeof(TileType), typeString.TrimEnd(new char[]{'s'}), true);
+        }
+        return type;
+    }
 
 
 }

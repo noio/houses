@@ -9,5 +9,17 @@
         "shuffleTiles": true,
         "scoreToWin": 9,
         "maxStackSize": 0
+    }, {
+        "layout": [
+            "-----",
+            "-----",
+            "-----",
+            "-----",
+            "-----"
+        ],
+        "tiles": "SM",
+        "shuffleTiles": true,
+        "scoreToWin": 9,
+        "maxStackSize": 0
     }]
 }

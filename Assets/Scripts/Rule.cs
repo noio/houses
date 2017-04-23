@@ -62,10 +62,10 @@ public class Rule2
         if (match.Success)
         {
             var r = new Rule2();
-            r.thisType = ParseTileTypes(match.Groups["type"].Value);
-            r.neighborType = ParseTileTypes(match.Groups["neighbors"].Value);
+            r.thisType = Game.ParseTileType(match.Groups["type"].Value);
+            r.neighborType = Game.ParseTileType(match.Groups["neighbors"].Value);
             r.neighborCount = int.Parse(match.Groups["count"].Value);
-            r.effect = ParseTileTypes(match.Groups["newType"].Value);
+            r.effect = Game.ParseTileType(match.Groups["newType"].Value);
             r.onStack = String.IsNullOrEmpty(match.Groups["stack"].Value) == false;
             Debug.LogFormat("{0} {1} {2} {3} {4}", r.thisType, r.neighborType, r.neighborCount, r.effect, r.onStack);
             return r;
@@ -75,13 +75,5 @@ public class Rule2
         return null;
     }
 
-    static TileType ParseTileTypes(string input)
-    {
-        TileType type = (TileType) 0;
-        foreach (var typeString in input.Split(new char[]{'/'}))
-        {
-            type |= (TileType)System.Enum.Parse(typeof(TileType), typeString.TrimEnd(new char[]{'s'}), true);
-        }
-        return type;
-    }
+
 }

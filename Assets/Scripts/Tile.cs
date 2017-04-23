@@ -11,17 +11,18 @@ public enum TileType
     Mansion = 1 << 4,
 }
 
-public enum TileColor
+public enum TileMode
 {
-    Blue,
-    Red,
-    Green
+    OnField,
+    OnStack,
+    InCursor
 }
 
 public class Tile : MonoBehaviour {
 
 	public TileType type;
     public Coords coords;
+    public float stackPosition;
 
     SpriteRenderer _renderer;
     public SpriteRenderer sprite
@@ -31,6 +32,23 @@ public class Tile : MonoBehaviour {
             return _renderer;
         }
     }
+    TileMode _mode;
+    public TileMode mode
+    {
+        get
+        {
+            return _mode;
+        }
+        set
+        {
+            if (value == TileMode.OnField)
+            {
+                sprite.color = Color.white;
+                GetComponent<Collider2D>().enabled = true;
+            }
+            _mode = value;
+        }
+    }
 
 
     void Awake()
@@ -38,13 +56,21 @@ public class Tile : MonoBehaviour {
         _renderer = GetComponentInChildren<SpriteRenderer>();
     }
 	// Update is called once per frame
-	void Update () {
-        _renderer.transform.localPosition = new Vector3(0, 0.1f * Mathf.PerlinNoise((transform.position.x + Time.time) / 3, transform.position.y));
-	}
-    void SetOnField (bool onField)
+	void Update ()
     {
-
-    }
+        if (_mode == TileMode.OnField)
+        {
+            float t = (transform.position.x + Time.time) / 3;
+            _renderer.transform.localPosition = new Vector3(0, 0.1f * Mathf.PerlinNoise(t, transform.position.y));
+        }
+        else if (_mode == TileMode.OnStack)
+        {
+            float t = Time.time * stackPosition * 3;
+            float x = 0; //0.2f * stackPosition * (Mathf.PerlinNoise(transform.position.x, t) - .5f);
+            float y = 0.2f * stackPosition * (Mathf.PerlinNoise(t, transform.position.y) - .5f);
+            _renderer.transform.localPosition = new Vector3(x, y);
+        }
+	}
 
 
     public void Bump(Vector2 force)
