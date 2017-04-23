@@ -17,9 +17,21 @@ public class Cursor : MonoBehaviour
         _game = FindObjectOfType<Game>();
     }
 
+    public void Clear()
+    {
+        foreach(var tile in _tiles)
+        {
+            Destroy(tile.gameObject);
+        }
+        _tiles.Clear();
+    }
 
     public void Update()
     {
+        if (_tiles.Count == 0)
+        {
+            return;
+        }
         if (EventSystem.current.IsPointerOverGameObject())
         {
             return;

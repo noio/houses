@@ -55,8 +55,8 @@ public class Rule2
         if (_regex == null)
         {
             var types = String.Join("|",System.Enum.GetNames(typeof(TileType)));
-            _regex = String.Format("(?<type>(\\/?({0})s?)+) between (?<count>\\d+) (?<neighbors>(\\/?({0})s?)+)s? becomes (?<newType>(\\/?({0})s?)+)s?(?<stack> .+ stack)?", types);
-            Debug.LogFormat(_regex);
+            _regex = String.Format("(?<type>(\\/?({0})s?)+) (between|near|next to) (?<count>\\d+) (?<neighbors>(\\/?({0})s?)+)s? becomes (?<newType>(\\/?({0})s?)+)s?(?<stack> .+ stack)?", types);
+            Debug.LogFormat("Using Regex to parse rules: {0}",_regex);
         }
         var match = Regex.Match(ruleString, _regex, RegexOptions.IgnoreCase);
         if (match.Success)
@@ -67,7 +67,7 @@ public class Rule2
             r.neighborCount = int.Parse(match.Groups["count"].Value);
             r.effect = Game.ParseTileType(match.Groups["newType"].Value);
             r.onStack = String.IsNullOrEmpty(match.Groups["stack"].Value) == false;
-            Debug.LogFormat("{0} {1} {2} {3} {4}", r.thisType, r.neighborType, r.neighborCount, r.effect, r.onStack);
+            Debug.LogFormat("Rule parsed: {0} near {2} {1} becomes {3}. Stacked: {4}", r.thisType, r.neighborType, r.neighborCount, r.effect, r.onStack);
             return r;
         }
         Debug.LogFormat("failed to read regex");

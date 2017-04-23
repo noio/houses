@@ -11,15 +11,45 @@
         "maxStackSize": 0
     }, {
         "layout": [
-            "-----",
+            "----",
+            "----",
+            "----",
+            "----"
+        ],
+        "tiles": "AASSF",
+        "shuffleTiles": true,
+        "scoreToWin": 16,
+        "maxStackSize": 0
+    }, {
+        "layout": [
             "-----",
             "-----",
             "-----",
             "-----"
         ],
-        "tiles": "SM",
+        "tiles": "SSSF",
         "shuffleTiles": true,
-        "scoreToWin": 9,
-        "maxStackSize": 0
+        "scoreToWin": 19,
+        "maxStackSize": 2
+    }, {
+        "layout": [
+            "    -----    ",
+            "  ---------  ",
+            " ----------- ",
+            " ----------- ",
+            "-------------",
+            "-------------",
+            "------F------",
+            "-------------",
+            "-------------",
+            " ----------- ",
+            " ----------- ",
+            "  ---------  ",
+            "    -----    "
+        ],
+        "tiles": "AAAMMMSSF",
+        "shuffleTiles": true,
+        "scoreToWin": 100,
+        "maxStackSize": 10
     }]
 }

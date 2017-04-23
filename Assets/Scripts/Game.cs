@@ -89,6 +89,7 @@ public class RuleAction
 
 public class Game : MonoBehaviour
 {
+    public bool forceDefaultLevelsAndRules = true;
     public int score;
 
     static Coords[] Neighbors = new Coords[] {
@@ -114,7 +115,6 @@ public class Game : MonoBehaviour
     public TextAsset defaultRules;
     public TextAsset defaultLevels;
 
-    Dictionary<Direction, Coords> offsets = new Dictionary<Direction, Coords>();
     Dictionary<Coords, Tile> _tiles = new Dictionary<Coords, Tile>();
 
     Queue<RuleAction> _actionQueue = new Queue<RuleAction>();
@@ -144,7 +144,7 @@ public class Game : MonoBehaviour
         _rulesPath = Path.Combine(Application.persistentDataPath, "rules.txt");
         _levelsPath = Path.Combine(Application.persistentDataPath, "levels.txt");
 
-        if (File.Exists(_rulesPath))
+        if (forceDefaultLevelsAndRules == false && File.Exists(_rulesPath))
         {
             rulesText.text = File.ReadAllText(_rulesPath);
         }
@@ -156,7 +156,7 @@ public class Game : MonoBehaviour
 
         JsonUtility.FromJsonOverwrite(defaultLevels.text, levels);
 
-        if (File.Exists(_levelsPath))
+        if (forceDefaultLevelsAndRules == false && File.Exists(_levelsPath))
         {
             try
             {
@@ -178,13 +178,20 @@ public class Game : MonoBehaviour
 
         _currentLevelNum = 0;
         SetupLevel(levels.levels[_currentLevelNum]);
+    }
 
-        FillCursor();
-        UpdateScore();
+    void Update()
+    {
+        if (Input.GetKeyDown("n"))
+        {
+            SetupLevel(levels.levels[++_currentLevelNum]);
+        }
     }
 
     void ClearGame()
     {
+        _stack.Clear();
+        _cursor.Clear();
         score = 0;
         foreach (var pair in _tiles)
         {
@@ -214,7 +221,6 @@ public class Game : MonoBehaviour
         tile.type = type;
         tile.coords = coords;
         tile.transform.localPosition = coords;
-        var renderer = tile.GetComponent<SpriteRenderer>();
         switch (type)
         {
             case TileType.Empty: tile.sprite.sprite = emptySprite; break;
@@ -232,7 +238,7 @@ public class Game : MonoBehaviour
         ClearGame();
         if (_field != null)
         {
-            Destroy(_field);
+            Destroy(_field.gameObject);
         }
         _field = new GameObject("Field").transform;
         _field.localPosition = new Vector3(0,0,1);
@@ -274,6 +280,9 @@ public class Game : MonoBehaviour
         }
 
         _stack.maxSize = _currentLevel.maxStackSize;
+
+        FillCursor();
+        UpdateScore();
     }
 
     public bool CanPlace(List<Tile> tiles, Coords atPoint)
@@ -301,6 +310,7 @@ public class Game : MonoBehaviour
 
         CheckRules();
         ProcessActions();
+        UpdateScore();
 
         if (_stack.size > _currentLevel.maxStackSize)
         {
@@ -310,10 +320,14 @@ public class Game : MonoBehaviour
         {
             wonOverlay.gameObject.SetActive(true);
         }
-
-        FillCursor();
-        UpdateScore();
-
+        else if (_tiles.Count >= _playingField.Count)
+        {
+            lostOverlay.gameObject.SetActive(true);
+        }
+        else
+        {
+            FillCursor();
+        }
     }
 
     void UpdateScore()
@@ -602,7 +616,7 @@ public class Game : MonoBehaviour
         {
             if (typeString.Length == 1)
             {
-                switch (input)
+                switch (typeString.ToUpper())
                 {
                     case "E": return TileType.Empty;
                     case "F": return TileType.Forest;
@@ -624,12 +638,14 @@ public class Game : MonoBehaviour
     public void OnClickLostOverlay()
     {
         SetupLevel(levels.levels[_currentLevelNum]);
+        lostOverlay.gameObject.SetActive(false);
     }
 
     public void OnClickWonOverlay()
     {
         _currentLevelNum ++;
         SetupLevel(levels.levels[_currentLevelNum]);
+        wonOverlay.gameObject.SetActive(false);
     }
 
 
